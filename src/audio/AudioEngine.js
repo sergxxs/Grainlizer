@@ -46,11 +46,21 @@ export class AudioEngine {
   async init() {
     if (this.ready) return;
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) throw new Error('Web Audio API is not available in this browser');
+    if (!AC) throw new Error('Web Audio API недоступен в этом браузере');
     this.ctx = new AC({ latencyHint: 'interactive' });
+    // fire a resume immediately: if init() runs inside a user gesture the
+    // context starts right away on iOS instead of waiting for a later tap
+    try { this.ctx.resume(); } catch (_) { /* ok */ }
 
-    await this.ctx.audioWorklet.addModule('src/audio/granular-worklet.js');
-    await this.ctx.audioWorklet.addModule('src/audio/recorder-worklet.js');
+    if (!this.ctx.audioWorklet) {
+      throw new Error('AudioWorklet недоступен — нужен Safari 14.5+ / Chrome 66+');
+    }
+    try {
+      await this.ctx.audioWorklet.addModule('src/audio/granular-worklet.js');
+      await this.ctx.audioWorklet.addModule('src/audio/recorder-worklet.js');
+    } catch (err) {
+      throw new Error(`Не удалось загрузить аудиомодули: ${err && err.message ? err.message : err}`);
+    }
 
     this.granularNode = new AudioWorkletNode(this.ctx, 'granular-processor', {
       numberOfInputs: 0,
@@ -115,11 +125,13 @@ export class AudioEngine {
    * must be resumed inside a user gesture, with a silent-buffer kick. The
    * resume() promise is raced against a timeout so callers never hang.
    */
-  async resume() {
+  async resume(opts = {}) {
+    const attempts = opts.attempts || 3;
+    const timeoutMs = opts.timeoutMs || 700;
     if (!this.ctx) return 'closed';
     if (this.ctx.state === 'closed') return 'closed';
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       if (this.ctx.state === 'running') return 'running';
 
       try {
@@ -133,12 +145,12 @@ export class AudioEngine {
       try {
         await Promise.race([
           this.ctx.resume(),
-          new Promise((resolve) => setTimeout(resolve, 700))
+          new Promise((resolve) => setTimeout(resolve, timeoutMs))
         ]);
       } catch (_) { /* retry */ }
 
       if (this.ctx.state === 'running') return 'running';
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      if (attempt < attempts - 1) await new Promise((resolve) => setTimeout(resolve, 120));
     }
     return this.ctx.state;
   }
@@ -149,6 +161,71 @@ export class AudioEngine {
 
   get running() {
     return !!this.ctx && this.ctx.state === 'running';
+  }
+
+  /**
+   * Rebuild the whole audio stack with a FRESH AudioContext.
+   * iOS Safari can permanently trap a context created outside a user gesture
+   * in the 'interrupted' state — the only reliable cure is to recreate it
+   * inside the gesture. The decoded sample and all params survive.
+   */
+  async rebuild() {
+    const buffer = this.buffer;
+    const meta = this.meta;
+    const selection = this.selection ? { ...this.selection } : null;
+    const wasPlaying = this.playing;
+    const pos = this.params.position;
+
+    try {
+      if (this.ctx && this.ctx.state !== 'closed') await this.ctx.close();
+    } catch (_) { /* ok */ }
+
+    this.ctx = null;
+    this.ready = false;
+    this.granularNode = null;
+    this.recorderNode = null;
+    this.effects = null;
+    this.recorderSink = null;
+    this.buffer = null;
+    this.playing = false;
+
+    await this.init();
+    if (buffer && meta) {
+      this.setBuffer(buffer, meta);
+      if (selection && buffer.length > 0) {
+        this.setSelection(selection.start / buffer.length, selection.end / buffer.length);
+      }
+      this.params.position = pos;
+      this.seek(pos);
+    }
+    this.pushParams();
+    return { restored: !!buffer, wasPlaying };
+  }
+
+  /**
+   * Diagnostic: play a short sine through the FULL effects chain to master.
+   * Silence here means the context/graph is blocked; audible tone means the
+   * problem is in the sample/granular layer.
+   */
+  async testTone(seconds = 1.2, freq = 440) {
+    await this.init();
+    const state = await this.resume();
+    if (state !== 'running') {
+      throw new Error('Аудио заблокировано — коснитесь экрана и повторите');
+    }
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(g);
+    g.connect(this.effects.input);
+    const now = this.ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.22, now + 0.06);
+    g.gain.setValueAtTime(0.22, now + Math.max(0.1, seconds - 0.15));
+    g.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    osc.start(now);
+    osc.stop(now + seconds + 0.1);
   }
 
   /* ---------------- sample handling ---------------- */

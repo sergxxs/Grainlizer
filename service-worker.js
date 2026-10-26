@@ -1,11 +1,11 @@
 /* GRAINLIZER — service worker (root scope: covers the whole app).
- * Precaches the app shell so the instrument opens offline (after first visit).
- * Cache-first for same-origin assets, network fallback, versioned cache name.
+ * NETWORK-FIRST for code (updates propagate immediately), cache fallback for
+ * offline. Versioned cache; old caches and legacy registrations are removed.
  */
 
 'use strict';
 
-const CACHE_NAME = 'grainlizer-v1';
+const CACHE_NAME = 'grainlizer-v2';
 
 const ASSETS = [
   './index.html',
@@ -53,21 +53,23 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
+  // NETWORK-FIRST: fresh code always wins when online — critical for fixes.
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      if (fresh && fresh.status === 200 && fresh.type === 'basic') {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, fresh.clone()).catch(() => {});
+      }
+      return fresh;
+    } catch (_) {
+      const cached = await caches.match(req);
       if (cached) return cached;
-      return fetch(req).then((res) => {
-        if (res && res.status === 200 && res.type === 'basic') {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
-        }
-        return res;
-      }).catch(() => {
-        if (req.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-        return new Response('', { status: 504, statusText: 'offline' });
-      });
-    })
-  );
+      if (req.mode === 'navigate') {
+        const shell = await caches.match('./index.html');
+        if (shell) return shell;
+      }
+      return new Response('', { status: 504, statusText: 'offline' });
+    }
+  })());
 });

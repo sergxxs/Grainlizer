@@ -354,6 +354,18 @@
         <div class="kv"><span>AudioContext</span><span id="ctxInfo">—</span></div>
         <div class="kv"><span>Sample rate</span><span id="ctxSr">—</span></div>
         <div class="kv"><span>State</span><span id="ctxState">—</span></div>
+        <div class="row row-tight" style="margin-top:10px">
+          <button class="btn btn-pink" id="btnTestTone" type="button">ТЕСТ-ЗВУК 440 Hz</button>
+        </div>
+        <p class="note">Тест-звук идёт через всю цепь эффектов до мастер-выхода.
+        Если он слышен, а сэмплы нет — проблема в загрузке семпла.
+        Если не слышен — браузер держит аудио заблокированным (коснитесь экрана ещё раз).</p>
+        <h3>Диагностика</h3>
+        <div class="kv"><span>Контекст</span><span id="diagCtx">—</span></div>
+        <div class="kv"><span>Движок</span><span id="diagInit">—</span></div>
+        <div class="kv"><span>Семпл</span><span id="diagSample">—</span></div>
+        <div class="kv"><span>Транспорт</span><span id="diagPlay">—</span></div>
+        <div class="kv"><span>Рекордер</span><span id="diagRec">—</span></div>
         <h3>Хранилище</h3>
         <div class="kv"><span>Пользовательских пресетов</span><span id="userPresetCount">0</span></div>
         <p class="note">Настройки: localStorage. Семплы/проекты: IndexedDB.

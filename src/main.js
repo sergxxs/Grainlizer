@@ -168,11 +168,44 @@ async function boot() {
     $('recStatus').dataset.kind = 'error';
   }
 
-  // first gesture resumes the AudioContext (iOS autoplay policy).
-  // Retry on every interaction: iOS Safari can flip to 'interrupted' at any time.
+  // ── audio unlock: retry on every interaction; if iOS trapped the context in
+  // 'interrupted', REBUILD it inside the gesture (the reliable cure).
+  let rebuilding = false;
+  let rebuildCount = 0;
   const unlock = async () => {
-    const state = await engine.resume();
-    setEngineStatus(state);
+    if (rebuilding) return;
+    try {
+      if (!engine.ready) {
+        await engine.init();
+        setupMeters();
+      }
+      let state = await engine.resume({ attempts: 2, timeoutMs: 450 });
+      if (state !== 'running' && engine.ctx && rebuildCount < 3) {
+        // stubborn context (created outside gesture / interrupted by iOS):
+        // recreate the whole stack right here, inside the user gesture
+        rebuilding = true;
+        rebuildCount++;
+        try {
+          await engine.rebuild();
+          setupMeters();
+          syncWaveSelection();
+          if (waveform && engine.buffer) waveform.setBuffer(engine.buffer);
+        } finally {
+          rebuilding = false;
+        }
+        state = await engine.resume();
+      }
+      setEngineStatus(state);
+      if (state !== 'running' && rebuildCount >= 3) {
+        $('recStatus').textContent = 'Браузер не даёт запустить аудио. Откройте приложение в отдельной вкладке (не в фрейме) и коснитесь экрана.';
+        $('recStatus').dataset.kind = 'error';
+      }
+    } catch (err) {
+      console.warn('unlock failed', err);
+      setEngineStatus('error');
+      $('recStatus').textContent = `Аудио: ${err.message || err}`;
+      $('recStatus').dataset.kind = 'error';
+    }
   };
   for (const evt of ['pointerdown', 'touchend', 'click', 'keydown']) {
     window.addEventListener(evt, unlock, { passive: true });
@@ -182,12 +215,19 @@ async function boot() {
   document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
       // returning from background often leaves iOS in 'interrupted'
-      const state = await engine.resume();
-      setEngineStatus(state);
+      await unlock();
     } else if (recorder.recording && recorderUI) {
       recorderUI.setStatus('Внимание: iOS может приостановить аудио при блокировке экрана', 'warn');
     }
   });
+
+  // auto-heal: if audio stalls while the instrument should be sounding, try again
+  setInterval(() => {
+    if (engine.ready && engine.state !== 'running' && (engine.playing || recorder.recording)) {
+      unlock();
+    }
+    updateDiagnostics();
+  }, 2000);
 
   // meters + clip LED + memory estimate
   const buf = new Float32Array(1024);
@@ -271,6 +311,17 @@ function setupMeters() {
   engine.effects.output.connect(splitter);
   splitter.connect(analyserL, 0);
   splitter.connect(analyserR, 1);
+}
+
+function updateDiagnostics() {
+  const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+  set('diagCtx', engine.ctx ? engine.ctx.state : 'не создан');
+  set('diagInit', engine.ready ? 'готов' : 'не инициализирован');
+  set('diagSample', engine.buffer && engine.meta
+    ? `${engine.meta.name.slice(0, 28)} (${(engine.meta.duration || 0).toFixed(1)}s)`
+    : 'не загружен');
+  set('diagPlay', engine.playing ? 'играет' : 'остановлен');
+  set('diagRec', recorder.recording ? recorder.state : recorder.state);
 }
 
 /* ================= knobs & toggles ================= */
@@ -543,6 +594,19 @@ function escapeHtml(s) {
 /* ================= settings / storage ================= */
 
 function bindSettings() {
+  const btnTest = $('btnTestTone');
+  if (btnTest) {
+    btnTest.addEventListener('click', async () => {
+      try {
+        await ensureAudio();
+        await engine.testTone(1.2, 440);
+        $('settingsNote').textContent = 'Идёт тест-звук 440 Гц через всю цепь эффектов. Если его НЕ слышно — проблема в запуске аудио (коснитесь экрана ещё раз).';
+      } catch (err) {
+        $('settingsNote').textContent = `Тест-звук не удался: ${err.message || err}`;
+      }
+    });
+  }
+
   $('btnSaveProject').addEventListener('click', async () => {
     const name = prompt('Имя проекта:', 'GRAINLIZER PROJECT');
     if (!name) return;
@@ -628,7 +692,14 @@ function registerPWA() {
     || location.hostname === '127.0.0.1'
     || location.hostname.endsWith('.e2b.app');
   if ('serviceWorker' in navigator && isSecure) {
-    navigator.serviceWorker.register('service-worker.js').catch((err) => {
+    // remove legacy registrations (previous builds used public/ scope)
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const r of regs) {
+        if (r.scope && r.scope.includes('/public/')) r.unregister().catch(() => {});
+      }
+    }).catch(() => {});
+    // cache-busting query so new builds re-register the worker promptly
+    navigator.serviceWorker.register('service-worker.js?v=2').catch((err) => {
       console.warn('SW registration failed', err);
     });
   }

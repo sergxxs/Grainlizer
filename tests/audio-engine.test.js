@@ -112,3 +112,57 @@ test('recorder.start() rejects clearly when no sample is loaded', async () => {
   const recorder = new Recorder(engine);
   await assert.rejects(() => recorder.start(), /семпл/i);
 });
+
+test('rebuild() replaces a stuck context and restores the sample + params', async () => {
+  const ctx = fakeCtx('interrupted');
+  ctx.resume = async () => { /* stuck forever */ };
+  const engine = engineWithCtx(ctx);
+  // sample + state that must survive the rebuild
+  const fakeBuffer = {
+    length: 1000,
+    duration: 2,
+    sampleRate: 48000,
+    numberOfChannels: 1,
+    getChannelData: () => new Float32Array(1000).fill(0.25)
+  };
+  engine.buffer = fakeBuffer;
+  engine.meta = { name: 'keep.wav', duration: 2, sampleRate: 48000, channels: 1 };
+  engine.params.position = 0.42;
+
+  // stub init()-built pieces (no real Web Audio in Node)
+  let closed = false;
+  ctx.close = async () => { closed = true; };
+  engine.init = async function stubInit() {
+    this.ctx = fakeCtx('suspended');
+    this.ctx.close = async () => { closed = true; };
+    this.ready = true;
+    this.effects = { applyParams() {}, connectTo() {}, output: { connect() {} } };
+    const posted = [];
+    this.granularNode = { port: { postMessage: (m) => posted.push(m) } };
+    this.recorderNode = { port: { postMessage() {} } };
+    this.recorderSink = { gain: { value: 0 }, connect() {} };
+    this._posted = posted;
+  };
+
+  const res = await engine.rebuild();
+  assert.equal(closed, true, 'old context must be closed');
+  assert.equal(res.restored, true);
+  assert.equal(engine.ready, true);
+  assert.equal(engine.buffer, fakeBuffer);
+  assert.ok(Math.abs(engine.params.position - 0.42) < 1e-9, 'position must survive');
+  const types = engine._posted.map((m) => m.type);
+  assert.ok(types.includes('buffer'), 'sample must be re-sent to the new worklet');
+  assert.ok(types.includes('seek'), 'playhead must be restored');
+});
+
+test('resume() honors custom attempts/timeout (fast path for unlock)', async () => {
+  const ctx = fakeCtx('interrupted');
+  ctx.resume = async () => { ctx.resumeCalls++; /* stuck */ };
+  const engine = engineWithCtx(ctx);
+  const t0 = Date.now();
+  const state = await engine.resume({ attempts: 2, timeoutMs: 50 });
+  const dt = Date.now() - t0;
+  assert.equal(state, 'interrupted');
+  assert.ok(ctx.resumeCalls === 2, `expected exactly 2 attempts, got ${ctx.resumeCalls}`);
+  assert.ok(dt < 1500, `fast path should not hang, took ${dt}ms`);
+});
