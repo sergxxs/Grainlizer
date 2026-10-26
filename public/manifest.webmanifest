@@ -1,0 +1,28 @@
+{
+  "name": "GRAINLIZER — Granular Ambient Instrument",
+  "short_name": "GRAINLIZER",
+  "description": "Granular ambient instrument: sample import, granular synthesis, tape/delay/reverb effects, internal master recording and real WAV export. Fully local.",
+  "id": "grainlizer",
+  "start_url": "../index.html",
+  "scope": "../",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070b0d",
+  "theme_color": "#070b0d",
+  "categories": ["music", "utilities"],
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

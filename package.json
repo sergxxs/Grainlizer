@@ -1,0 +1,13 @@
+{
+  "name": "grainlizer",
+  "version": "1.0.0",
+  "description": "GRAINLIZER — granular ambient instrument for iPhone (PWA, Web Audio)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "icons": "node scripts/gen-icons.mjs",
+    "serve": "python3 -m http.server 8080"
+  },
+  "license": "MIT"
+}
