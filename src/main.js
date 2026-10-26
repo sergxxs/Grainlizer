@@ -524,13 +524,23 @@ function bindTransport() {
 function bindPresets() {
   renderPresets();
 
-  $('btnRandomize').addEventListener('click', () => {
-    const p = randomizeParams();
+  $('btnSoftRandomize').addEventListener('click', () => {
+    const p = randomizeParams(Math.random, 'soft', engine.params);
     applyParamsToUI(p);
     activePresetId = '';
     renderPresets();
     autosave();
-    $('recStatus').textContent = 'RANDOMIZE: новые настройки';
+    $('recStatus').textContent = 'SOFT RND: мягкие вариации текущих настроек';
+    $('recStatus').dataset.kind = 'ok';
+  });
+
+  $('btnRandomize').addEventListener('click', () => {
+    const p = randomizeParams(Math.random, 'hard');
+    applyParamsToUI(p);
+    activePresetId = '';
+    renderPresets();
+    autosave();
+    $('recStatus').textContent = 'RND FULL: новые настройки';
     $('recStatus').dataset.kind = 'ok';
   });
 

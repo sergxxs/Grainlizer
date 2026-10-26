@@ -36,12 +36,15 @@ function assertCompleteParams(p) {
   assert.ok(p.fx.reverb.mix >= 0 && p.fx.reverb.mix <= 1);
 }
 
-test('all 6 built-in presets exist with full safe parameter sets', () => {
+test('all 12 built-in presets exist with full safe parameter sets', () => {
   const names = BUILTIN_PRESETS.map((p) => p.name);
-  for (const expected of ['SOFT MEMORY', 'BROKEN TAPE', 'GLASS CLOUD', 'LOST SIGNAL', 'DEEP SLEEP', 'DREAM FRAGMENT']) {
+  for (const expected of [
+    'SOFT MEMORY', 'BROKEN TAPE', 'GLASS CLOUD', 'LOST SIGNAL', 'DEEP SLEEP', 'DREAM FRAGMENT',
+    'NEON DUST', 'MAGNETIC GHOST', 'ICE CAVE', 'SLOW EROSION', 'STATIC BLOOM', 'SATELLITE DRIFT'
+  ]) {
     assert.ok(names.includes(expected), `missing preset ${expected}`);
   }
-  assert.equal(BUILTIN_PRESETS.length, 6);
+  assert.equal(BUILTIN_PRESETS.length, 12);
   for (const preset of BUILTIN_PRESETS) {
     assertCompleteParams(preset.params);
   }
@@ -106,6 +109,58 @@ test('randomizeParams produces musical, safe values (seeded)', () => {
     assert.ok(p.fx.delay.feedback <= 0.85);
     assert.ok(p.master <= 0.85, 'randomize must not push master dangerously high');
   }
+});
+
+test('SOFT randomize keeps the character of the base patch', () => {
+  let seed = 7;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const base = BUILTIN_PRESETS.find((p) => p.id === 'broken-tape').params;
+  for (let i = 0; i < 100; i++) {
+    const p = randomizeParams(rand, 'soft', base);
+    assertCompleteParams(p);
+    // flags preserved — soft never flips reverse/freeze
+    assert.equal(p.reverse, base.reverse);
+    assert.equal(p.freeze, base.freeze);
+    // effects stay enabled as in the base patch
+    assert.equal(p.fx.filter.on, base.fx.filter.on);
+    assert.equal(p.fx.filter.type, base.fx.filter.type);
+    assert.equal(p.fx.tape.on, base.fx.tape.on);
+    assert.equal(p.fx.delay.on, base.fx.delay.on);
+    assert.equal(p.fx.reverb.on, base.fx.reverb.on);
+    // pitch drifts at most ±2 semitones from base
+    assert.ok(Math.abs(p.pitch - base.pitch) <= 2, `pitch drift too big: ${p.pitch} vs ${base.pitch}`);
+    // grain size stays within a narrow relative band (±30%)
+    assert.ok(p.grainSize >= base.grainSize * 0.65 && p.grainSize <= base.grainSize * 1.35,
+      `grainSize ${p.grainSize} too far from ${base.grainSize}`);
+    // master stays conservative
+    assert.ok(p.master >= 0.5 && p.master <= 0.92);
+    // delay feedback never runs away
+    assert.ok(p.fx.delay.feedback <= 0.85);
+  }
+});
+
+test('SOFT randomize produces visible but bounded variation', () => {
+  let seed = 1234;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const base = defaultParams();
+  let changed = 0;
+  for (let i = 0; i < 30; i++) {
+    const p = randomizeParams(rand, 'soft', base);
+    if (p.grainSize !== base.grainSize || p.density !== base.density
+      || p.fx.filter.cutoff !== base.fx.filter.cutoff) changed++;
+  }
+  assert.ok(changed >= 25, 'soft randomize must actually change values');
+});
+
+test('SOFT randomize with no base falls back to defaults and stays safe', () => {
+  const p = randomizeParams(Math.random, 'soft', null);
+  assertCompleteParams(p);
 });
 
 test('defaultParams is complete and safe', () => {

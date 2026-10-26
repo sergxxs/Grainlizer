@@ -18,7 +18,7 @@
 | **EFFECTS** | FILTER (LP/HP + резонанс) → TAPE (tanh-насыщение, TONE, WOW/флаттер) → DELAY (TIME ≤1.8s, FEEDBACK ≤0.85, MIX) → REVERB (алгоритмическая свёртка со сгенерированным IR: SIZE/DECAY/MIX) → MASTER (volume, soft-clip, лимитер) + BYPASS |
 | **REC** | Внутренний мастер-рекордер (та же шина, что и на выход — без микрофона), таймер MM:SS.ms, TAIL 0/2/5/10 s (хвост эффектов дописывается после STOP), индикаторы REC/CLIP/VOICES, оценка памяти, лимит 20 минут |
 | **EXPORT WAV** | Настоящий RIFF/WAVE: 16-bit PCM (format 1) или 32-bit float (format 3, с fact-чанком), стерео, корректные заголовки/размеры чанков; повторный экспорт без новой записи; кодирование в Web Worker |
-| **PRESETS** | SOFT MEMORY, BROKEN TAPE, GLASS CLOUD, LOST SIGNAL, DEEP SLEEP, DREAM FRAGMENT + RANDOMIZE (безопасные музыкальные значения) + пользовательские пресеты |
+| **PRESETS** | 12 встроенных: SOFT MEMORY, BROKEN TAPE, GLASS CLOUD, LOST SIGNAL, DEEP SLEEP, DREAM FRAGMENT, NEON DUST, MAGNETIC GHOST, ICE CAVE, SLOW EROSION, STATIC BLOOM, SATELLITE DRIFT + SOFT RND (мягкие вариации вокруг текущих настроек) + RND FULL (смелый музыкальный рандом) + пользовательские пресеты |
 | **СОХРАНЕНИЕ** | Настройки/пресеты — localStorage; семпл и проекты — IndexedDB; повреждённые данные и нехватка квоты обрабатываются |
 | **PWA** | manifest + service worker (офлайн-кэш app shell), иконки, safe-area, портрет/ландшафт/планшет, установка на экран «Домой» |
 
@@ -115,7 +115,7 @@ scripts/gen-icons.mjs       генератор PNG-иконок без зави�
 
 ## Автотесты
 
-`npm test` — 65 проверок, включая:
+`npm test` — 70 проверок, включая:
 
 * WAV: RIFF-заголовки, размеры чанков, 16-bit конвертация (клампинг, NaN), 32-bit float, mono/stereo, длительность, повторный экспорт;
 * гранулярный DSP (реальный процессор в vm-песочнице): ненулевой выход, отсутствие NaN/Inf, лимит голосов, STOP→тишина, PANIC, FREEZE (head не движется), REVERSE, границы буфера, короткие семплы, моно, смена параметров на лету;
