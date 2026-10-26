@@ -72,7 +72,7 @@ test('play() throws a clear error when audio stays blocked (no silent no-op)', a
   const ctx = fakeCtx('interrupted');
   ctx.resume = async () => { /* blocked forever */ };
   const engine = engineWithCtx(ctx);
-  engine.buffer = { length: 100, duration: 1, sampleRate: 48000, numberOfChannels: 2 };
+  engine.slots = [{ buffer: { length: 100, duration: 1, sampleRate: 48000, numberOfChannels: 2 }, meta: {} }, null];
   await assert.rejects(() => engine.play(), /заблокировано|blocked/i);
   assert.equal(engine.playing, false);
 });
@@ -80,7 +80,7 @@ test('play() throws a clear error when audio stays blocked (no silent no-op)', a
 test('play() works after resume succeeds', async () => {
   const ctx = fakeCtx('suspended');
   const engine = engineWithCtx(ctx);
-  engine.buffer = { length: 100, duration: 1, sampleRate: 48000, numberOfChannels: 2 };
+  engine.slots = [{ buffer: { length: 100, duration: 1, sampleRate: 48000, numberOfChannels: 2 }, meta: {} }, null];
   let played = false;
   engine.granularNode = { port: { postMessage: (m) => { if (m.type === 'play') played = true; } } };
   await engine.play();
@@ -98,7 +98,7 @@ test('recorder.start() refuses to record while audio is blocked', async () => {
   const ctx = fakeCtx('interrupted');
   ctx.resume = async () => { /* blocked forever */ };
   const engine = engineWithCtx(ctx);
-  engine.buffer = { length: 100 };
+  engine.slots = [{ buffer: { length: 100 }, meta: {} }, null];
   const recorder = new Recorder(engine);
   await assert.rejects(() => recorder.start(), /заблокировано|blocked/i);
   assert.equal(recorder.state, 'error');
@@ -108,7 +108,6 @@ test('recorder.start() refuses to record while audio is blocked', async () => {
 test('recorder.start() rejects clearly when no sample is loaded', async () => {
   const { Recorder } = await import('../src/audio/Recorder.js');
   const engine = engineWithCtx(fakeCtx('running'));
-  engine.buffer = null;
   const recorder = new Recorder(engine);
   await assert.rejects(() => recorder.start(), /семпл/i);
 });
@@ -125,8 +124,7 @@ test('rebuild() replaces a stuck context and restores the sample + params', asyn
     numberOfChannels: 1,
     getChannelData: () => new Float32Array(1000).fill(0.25)
   };
-  engine.buffer = fakeBuffer;
-  engine.meta = { name: 'keep.wav', duration: 2, sampleRate: 48000, channels: 1 };
+  engine.slots = [{ buffer: fakeBuffer, meta: { name: 'keep.wav', duration: 2, sampleRate: 48000, channels: 1 } }, null];
   engine.params.position = 0.42;
 
   // stub init()-built pieces (no real Web Audio in Node)

@@ -221,3 +221,120 @@ test('parameter changes during playback stay safe and smooth', () => {
     runBlocks(proc, 25);
   }
 });
+
+/* ---------------- sample slots A/B ---------------- */
+
+function setupTwoSlots({ loudA = 0.7, loudB = 0 } = {}) {
+  const { ProcessorClass, posted } = loadWorklet('src/audio/granular-worklet.js', { sampleRate: SR });
+  const proc = new ProcessorClass();
+  const frames = 24000;
+  for (const [slot, amp] of [[0, loudA], [1, loudB]]) {
+    const ch0 = new Float32Array(frames);
+    const ch1 = new Float32Array(frames);
+    for (let i = 0; i < frames; i++) {
+      ch0[i] = Math.sin((2 * Math.PI * 330 * i) / SR) * amp;
+      ch1[i] = Math.sin((2 * Math.PI * 440 * i) / SR) * amp;
+    }
+    proc.onMessage({ type: 'buffer', slot, length: frames, channels: [ch0, ch1] });
+  }
+  proc.onMessage({ type: 'selection', start: 0, end: 1, normalized: true });
+  return { proc, posted };
+}
+
+test('SLOT A only (XFADE=0) draws sound from slot A', () => {
+  const { proc } = setupTwoSlots({ loudA: 0.7, loudB: 0 });
+  proc.onMessage({ type: 'params', params: { mix: 1, slotMix: 0, density: 25, grainSize: 100 } });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 60);
+  const { nonZero } = runBlocks(proc, 120);
+  assert.ok(nonZero > 500, `slot A must feed the texture, nonZero=${nonZero}`);
+});
+
+test('XFADE=1 with silent slot B silences grains and dry (B is the source)', () => {
+  const { proc } = setupTwoSlots({ loudA: 0.7, loudB: 0 });
+  proc.onMessage({ type: 'params', params: { mix: 1, slotMix: 1, density: 25, grainSize: 100 } });
+  proc.onMessage({ type: 'seek', position: 0.5 });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 120); // let old A-grains finish + slotMix converge
+  const { nonZero } = runBlocks(proc, 200);
+  assert.equal(nonZero, 0, 'with XFADE fully on silent slot B the output must be silent');
+});
+
+test('XFADE morphs gradually: mid position mixes both slots', () => {
+  const { proc } = setupTwoSlots({ loudA: 0.7, loudB: 0.7 });
+  proc.onMessage({ type: 'params', params: { mix: 1, slotMix: 0.5, density: 30, grainSize: 90, width: 1 } });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 60);
+  const { nonZero, peak } = runBlocks(proc, 150);
+  assert.ok(nonZero > 500);
+  assert.ok(peak > 0.01, 'mixed slots must stay audible');
+});
+
+test('clearing one slot leaves the other working', () => {
+  const { proc } = setupTwoSlots({ loudA: 0, loudB: 0.7 });
+  proc.onMessage({ type: 'clear', slot: 0 });
+  proc.onMessage({ type: 'params', params: { mix: 1, slotMix: 0, density: 25, grainSize: 100 } });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 60);
+  const { nonZero } = runBlocks(proc, 120);
+  assert.ok(nonZero > 500, 'slot B must survive slot A clear');
+});
+
+test('both slots cleared -> silence, processor stays alive', () => {
+  const { proc } = setupTwoSlots();
+  proc.onMessage({ type: 'clear', slot: 0 });
+  proc.onMessage({ type: 'clear', slot: 1 });
+  proc.onMessage({ type: 'play' });
+  const out = makeOutput(2, 128);
+  const alive = proc.process([], out);
+  assert.equal(alive, true);
+  for (let i = 0; i < 128; i++) assert.equal(out[0][0][i], 0);
+});
+
+/* ---------------- grain windows & width ---------------- */
+
+test('all grain window shapes produce safe non-zero output', () => {
+  for (const win of ['hann', 'tukey', 'perc', 'rev']) {
+    const { proc } = setup();
+    proc.onMessage({ type: 'params', params: { mix: 1, window: win, density: 25, grainSize: 120 } });
+    proc.onMessage({ type: 'play' });
+    runBlocks(proc, 40);
+    const { peak, nonZero } = runBlocks(proc, 100);
+    assert.ok(nonZero > 300, `window ${win} must sound, nonZero=${nonZero}`);
+    assert.ok(Number.isFinite(peak));
+  }
+});
+
+test('unknown window string falls back to hann safely', () => {
+  const { proc } = setup();
+  proc.onMessage({ type: 'params', params: { mix: 1, window: 'bogus-shape', density: 25, grainSize: 100 } });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 80);
+});
+
+test('WIDTH=0 gives centered grains (L==R for mono source)', () => {
+  const { proc } = setup({ channels: 1 });
+  proc.onMessage({ type: 'params', params: { mix: 1, width: 0, jitter: 0, density: 25, grainSize: 100, spray: 0 } });
+  proc.onMessage({ type: 'seek', position: 0.5 });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 100);
+  const out = makeOutput(2, 128);
+  proc.process([], out);
+  let maxDiff = 0;
+  for (let i = 0; i < 128; i++) {
+    maxDiff = Math.max(maxDiff, Math.abs(out[0][0][i] - out[0][1][i]));
+  }
+  assert.ok(maxDiff < 1e-6, `mono width must be centered, maxDiff=${maxDiff}`);
+});
+
+test('WIDTH=1 spreads grains (L and R differ for mono source)', () => {
+  const { proc } = setup({ channels: 1 });
+  proc.onMessage({ type: 'params', params: { mix: 1, width: 1, jitter: 0.5, density: 30, grainSize: 150, spray: 0.3 } });
+  proc.onMessage({ type: 'play' });
+  runBlocks(proc, 120);
+  const out = makeOutput(2, 1024);
+  for (let b = 0; b < 8; b++) proc.process([], out);
+  let diff = 0;
+  for (let i = 0; i < 128; i++) diff += Math.abs(out[0][0][i] - out[0][1][i]);
+  assert.ok(diff > 1e-3, 'wide stereo must decorrelate L/R');
+});

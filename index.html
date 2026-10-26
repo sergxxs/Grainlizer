@@ -42,11 +42,15 @@
         <div class="panel-head">
           <h2 class="panel-title">SAMPLE</h2>
           <div class="panel-actions">
-            <button class="btn" id="btnImport" type="button">IMPORT</button>
-            <button class="btn" id="btnDemo" type="button">DEMO</button>
-            <button class="btn btn-ghost" id="btnClearSample" type="button">CLEAR</button>
-            <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+            <button class="toggle is-on" id="slotA" aria-pressed="true" type="button">SLOT A</button>
+            <button class="toggle" id="slotB" aria-pressed="false" type="button">SLOT B</button>
           </div>
+        </div>
+        <div class="panel-actions panel-actions-wrap">
+          <button class="btn" id="btnImport" type="button">IMPORT</button>
+          <button class="btn" id="btnDemo" type="button">DEMO</button>
+          <button class="btn btn-ghost" id="btnClearSample" type="button">CLEAR</button>
+          <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
         </div>
         <div class="sample-info" id="sampleInfo">
           <span class="chip chip-dim" id="chipName">нет семпла</span>
@@ -73,6 +77,15 @@
           <div class="panel-actions">
             <button class="toggle" id="tgReverse" aria-pressed="false" type="button">REV</button>
             <button class="toggle" id="tgFreeze" aria-pressed="false" type="button">FREEZE</button>
+          </div>
+        </div>
+        <div class="fx-head win-head">
+          <h3 class="fx-title">GRAIN WINDOW</h3>
+          <div class="seg" role="group" aria-label="Grain window">
+            <button class="seg-btn is-on" id="winHann" type="button">HANN</button>
+            <button class="seg-btn" id="winTukey" type="button">TUKEY</button>
+            <button class="seg-btn" id="winPerc" type="button">PERC</button>
+            <button class="seg-btn" id="winRev" type="button">REV</button>
           </div>
         </div>
         <div class="knob-grid">
@@ -107,6 +120,14 @@
           <div class="knob" data-param="mix" data-min="0" data-max="100" data-default="80" data-step="1" data-unit="%" data-fmt="int">
             <div class="knob-dial"><div class="knob-pointer"></div></div>
             <div class="knob-value">80 %</div><div class="knob-label">MIX</div>
+          </div>
+          <div class="knob knob-pink" data-param="slotMix" data-min="0" data-max="100" data-default="0" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">0 %</div><div class="knob-label">XFADE A→B</div>
+          </div>
+          <div class="knob" data-param="width" data-min="0" data-max="100" data-default="70" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">70 %</div><div class="knob-label">WIDTH</div>
           </div>
         </div>
       </section>

@@ -53,11 +53,8 @@ async function boot() {
     onSelection: (a, b) => {
       engine.setSelection(a, b);
       updateSelectionChip();
-      if (engine.buffer) {
-        waveform.setSelection(
-          engine.selection.start / engine.buffer.length,
-          engine.selection.end / engine.buffer.length
-        );
+      if (waveform) {
+        waveform.setSelection(engine.selection.start, engine.selection.end);
       }
     }
   });
@@ -94,8 +91,8 @@ async function boot() {
   };
 
   engine.onStatus = (st) => {
-    const total = engine.buffer ? engine.buffer.length : 1;
-    const headNorm = Math.max(0, Math.min(1, st.head / total));
+    // st.head is already normalized 0..1 (shared across slots)
+    const headNorm = Math.max(0, Math.min(1, st.head));
     if (waveform) waveform.setHead(headNorm);
     $('headReadout').textContent = `POS ${headNorm.toFixed(3)}`;
     $('voiceReadout').textContent = `VOICES ${st.voiceCount}`;
@@ -335,6 +332,8 @@ const PARAM_DEFS = {
   rate: { toEngine: (v) => v, toUi: (p) => p.rate },
   jitter: { toEngine: (v) => v / 100, toUi: (p) => p.jitter * 100 },
   mix: { toEngine: (v) => v / 100, toUi: (p) => p.mix * 100 },
+  slotMix: { toEngine: (v) => v / 100, toUi: (p) => (p.slotMix ?? 0) * 100 },
+  width: { toEngine: (v) => v / 100, toUi: (p) => (p.width ?? 0.7) * 100 },
   master: { toEngine: (v) => v / 100, toUi: (p) => p.master * 100 },
   'filter.cutoff': { fx: ['filter', 'cutoff'], toEngine: (v) => v, toUi: (p) => p.fx.filter.cutoff },
   'filter.q': { fx: ['filter', 'q'], toEngine: (v) => v, toUi: (p) => p.fx.filter.q },
@@ -385,10 +384,25 @@ function bindToggles() {
     engine.setFxParam('filter', 'type', 'highpass');
     autosave();
   });
+
+  // grain window shapes
+  const winButtons = { hann: $('winHann'), tukey: $('winTukey'), perc: $('winPerc'), rev: $('winRev') };
+  for (const [kind, btn] of Object.entries(winButtons)) {
+    if (!btn) continue;
+    btn.addEventListener('click', () => {
+      for (const b of Object.values(winButtons)) if (b) b.classList.remove('is-on');
+      btn.classList.add('is-on');
+      engine.setParam('window', kind);
+      autosave();
+    });
+  }
+  toggles.winButtons = winButtons;
 }
 
 function applyParamsToUI(params) {
   const p = sanitizeParams(params);
+  // XFADE belongs to the loaded samples, not to a patch — never reset it
+  p.slotMix = engine.params.slotMix;
   for (const [key, def] of Object.entries(PARAM_DEFS)) {
     const knob = knobs.get(key);
     if (knob && def.toUi) knob.setSilent(def.toUi(p));
@@ -408,6 +422,11 @@ function applyParamsToUI(params) {
       $('segLP').classList.add('is-on');
       $('segHP').classList.remove('is-on');
     }
+    if (toggles.winButtons) {
+      for (const [kind, btn] of Object.entries(toggles.winButtons)) {
+        if (btn) btn.classList.toggle('is-on', kind === p.window);
+      }
+    }
   }
   engine.params = p;
   engine.pushParams();
@@ -417,6 +436,35 @@ function applyParamsToUI(params) {
 
 function bindSampleSection() {
   const fileInput = $('fileInput');
+
+  // sample slots A/B: switch the edited/displayed slot (audio crossfades via XFADE)
+  const syncSlotButtons = () => {
+    const active = engine.activeSlot;
+    $('slotA').classList.toggle('is-on', active === 0);
+    $('slotA').setAttribute('aria-pressed', active === 0 ? 'true' : 'false');
+    $('slotB').classList.toggle('is-on', active === 1);
+    $('slotB').setAttribute('aria-pressed', active === 1 ? 'true' : 'false');
+  };
+  $('slotA').addEventListener('click', () => {
+    engine.setActiveSlot(0);
+    syncSlotButtons();
+    if (waveform) {
+      if (engine.buffer) waveform.setBuffer(engine.buffer);
+      else waveform.clear();
+    }
+    updateSelectionChip();
+  });
+  $('slotB').addEventListener('click', () => {
+    engine.setActiveSlot(1);
+    syncSlotButtons();
+    if (waveform) {
+      if (engine.buffer) waveform.setBuffer(engine.buffer);
+      else waveform.clear();
+    }
+    updateSelectionChip();
+  });
+  engine.onSlotsChanged = () => syncSlotButtons();
+
   $('btnImport').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0];
@@ -449,11 +497,8 @@ function bindSampleSection() {
 }
 
 function syncWaveSelection() {
-  if (waveform && engine.buffer) {
-    waveform.setSelection(
-      engine.selection.start / engine.buffer.length,
-      engine.selection.end / engine.buffer.length
-    );
+  if (waveform) {
+    waveform.setSelection(engine.selection.start, engine.selection.end);
   }
 }
 
@@ -481,8 +526,8 @@ async function loadSampleFile(file) {
 
 function updateSelectionChip() {
   if (!engine.buffer) return;
-  const a = engine.selection.start / engine.buffer.length;
-  const b = engine.selection.end / engine.buffer.length;
+  const a = engine.selection.start;
+  const b = engine.selection.end;
   $('chipSel').textContent = `SEL ${(a * 100).toFixed(1)}–${(b * 100).toFixed(1)}%`;
 }
 

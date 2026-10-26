@@ -100,7 +100,7 @@ test('pure modules evaluate and export their API', async () => {
   assert.equal(typeof wav.encodeWav, 'function');
   assert.equal(typeof wav.parseWavHeader, 'function');
   const presets = await import('../src/state/Presets.js');
-  assert.equal(presets.BUILTIN_PRESETS.length, 12);
+  assert.equal(presets.BUILTIN_PRESETS.length, 32);
   const fx = await import('../src/audio/EffectsChain.js');
   assert.equal(typeof fx.EffectsChain, 'function');
 });

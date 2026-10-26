@@ -15,6 +15,9 @@ export function defaultParams() {
     reverse: false,
     freeze: false,
     mix: 0.8,
+    slotMix: 0,
+    width: 0.7,
+    window: 'hann',
     master: 0.8,
     fxBypass: false,
     fx: {
@@ -225,6 +228,308 @@ export const BUILTIN_PRESETS = [
         reverb: { on: true, size: 0.8, decay: 0.7, mix: 0.52 }
       }
     })
+  },
+
+  // ── 20 unusual patches ──────────────────────────────────────────────
+  {
+    id: 'rust-garden',
+    name: 'RUST GARDEN',
+    desc: 'ржавый сад, растущий шум',
+    params: P({
+      grainSize: 340, density: 12, spray: 0.3, pitch: -5, rate: 0.7,
+      jitter: 0.35, width: 0.8, window: 'perc', mix: 0.9, master: 0.75,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 2200, q: 2.2 },
+        tape: { on: true, drive: 2.2, tone: 0.35, wow: 0.35 },
+        delay: { on: true, time: 0.44, feedback: 0.55, mix: 0.32 },
+        reverb: { on: true, size: 0.6, decay: 0.55, mix: 0.42 }
+      }
+    })
+  },
+  {
+    id: 'velvet-static',
+    name: 'VELVET STATIC',
+    desc: 'бархатный статик из облаков',
+    params: P({
+      grainSize: 95, density: 55, spray: 0.65, pitch: 3, rate: 1.2,
+      jitter: 0.7, width: 1, window: 'tukey', mix: 0.95, master: 0.68,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 7500, q: 0.5 },
+        tape: { on: true, drive: 1.15, tone: 0.75, wow: 0.12 },
+        delay: { on: true, time: 0.19, feedback: 0.4, mix: 0.28 },
+        reverb: { on: true, size: 0.75, decay: 0.65, mix: 0.55 }
+      }
+    })
+  },
+  {
+    id: 'cathedral-dust',
+    name: 'CATHEDRAL DUST',
+    desc: 'пыль собора, светлый купол',
+    params: P({
+      grainSize: 120, density: 30, spray: 0.45, pitch: 7, rate: 1,
+      jitter: 0.3, width: 0.9, window: 'hann', mix: 0.92, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 350, q: 0.5 },
+        tape: { on: true, drive: 1.1, tone: 0.9, wow: 0.08 },
+        delay: { on: true, time: 0.72, feedback: 0.5, mix: 0.33 },
+        reverb: { on: true, size: 0.98, decay: 0.9, mix: 0.62 }
+      }
+    })
+  },
+  {
+    id: 'tape-worm',
+    name: 'TAPE WORM',
+    desc: 'плёнка уходит в пике',
+    params: P({
+      grainSize: 190, density: 15, spray: 0.22, pitch: -2, rate: 0.88,
+      jitter: 0.6, width: 0.5, window: 'tukey', mix: 0.88, master: 0.74,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 3200, q: 1.4 },
+        tape: { on: true, drive: 2.6, tone: 0.28, wow: 0.9 },
+        delay: { on: true, time: 0.38, feedback: 0.6, mix: 0.3 },
+        reverb: { on: true, size: 0.5, decay: 0.5, mix: 0.36 }
+      }
+    })
+  },
+  {
+    id: 'underwater-organ',
+    name: 'UNDERWATER ORGAN',
+    desc: 'подводный орган',
+    params: P({
+      grainSize: 480, density: 10, spray: 0.12, pitch: -12, rate: 0.6,
+      jitter: 0.15, width: 0.6, window: 'hann', freeze: true, mix: 0.95, master: 0.8,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 900, q: 1.8 },
+        tape: { on: true, drive: 1.6, tone: 0.22, wow: 0.4 },
+        delay: { on: true, time: 0.68, feedback: 0.52, mix: 0.3 },
+        reverb: { on: true, size: 0.88, decay: 0.8, mix: 0.55 }
+      }
+    })
+  },
+  {
+    id: 'chrome-insects',
+    name: 'CHROME INSECTS',
+    desc: 'хромовые насекомые',
+    params: P({
+      grainSize: 28, density: 70, spray: 0.75, pitch: 12, rate: 1.5,
+      jitter: 0.85, width: 1, window: 'perc', mix: 0.95, master: 0.65,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 500, q: 1.2 },
+        tape: { on: true, drive: 1.3, tone: 0.85, wow: 0.2 },
+        delay: { on: true, time: 0.16, feedback: 0.45, mix: 0.35 },
+        reverb: { on: true, size: 0.55, decay: 0.45, mix: 0.4 }
+      }
+    })
+  },
+  {
+    id: 'sleepwalker',
+    name: 'SLEEPWALKER',
+    desc: 'лунатик во тьме',
+    params: P({
+      grainSize: 700, density: 6, spray: 0.18, pitch: -7, rate: 0.5,
+      jitter: 0.12, width: 0.55, window: 'hann', mix: 0.96, master: 0.82,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 1400, q: 1.5 },
+        tape: { on: true, drive: 1.4, tone: 0.25, wow: 0.22 },
+        delay: { on: true, time: 0.85, feedback: 0.55, mix: 0.28 },
+        reverb: { on: true, size: 0.9, decay: 0.85, mix: 0.5 }
+      }
+    })
+  },
+  {
+    id: 'burned-letter',
+    name: 'BURNED LETTER',
+    desc: 'сожжённое письмо',
+    params: P({
+      grainSize: 160, density: 20, spray: 0.4, pitch: -3, rate: 0.9,
+      jitter: 0.5, width: 0.65, window: 'rev', reverse: true, mix: 0.9, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 2600, q: 2.8 },
+        tape: { on: true, drive: 2.4, tone: 0.4, wow: 0.45 },
+        delay: { on: true, time: 0.34, feedback: 0.5, mix: 0.32 },
+        reverb: { on: true, size: 0.65, decay: 0.6, mix: 0.45 }
+      }
+    })
+  },
+  {
+    id: 'aurora-drift',
+    name: 'AURORA DRIFT',
+    desc: 'дрейф полярного сияния',
+    params: P({
+      grainSize: 110, density: 40, spray: 0.6, pitch: 5, rate: 1.1,
+      jitter: 0.4, width: 1, window: 'tukey', mix: 0.93, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 250, q: 0.6 },
+        tape: { on: true, drive: 1.05, tone: 0.88, wow: 0.15 },
+        delay: { on: true, time: 0.58, feedback: 0.55, mix: 0.36 },
+        reverb: { on: true, size: 0.92, decay: 0.82, mix: 0.58 }
+      }
+    })
+  },
+  {
+    id: 'phantom-choir',
+    name: 'PHANTOM CHOIR',
+    desc: 'фантомный хор',
+    params: P({
+      grainSize: 300, density: 22, spray: 0.25, pitch: 12, rate: 0.85,
+      jitter: 0.28, width: 0.95, window: 'hann', mix: 0.94, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 5500, q: 1.1 },
+        tape: { on: true, drive: 1.2, tone: 0.7, wow: 0.25 },
+        delay: { on: true, time: 0.47, feedback: 0.58, mix: 0.34 },
+        reverb: { on: true, size: 0.85, decay: 0.78, mix: 0.56 }
+      }
+    })
+  },
+  {
+    id: 'gravel-rain',
+    name: 'GRAVEL RAIN',
+    desc: 'дождь из гравия',
+    params: P({
+      grainSize: 45, density: 65, spray: 0.8, pitch: 2, rate: 1.35,
+      jitter: 0.9, width: 1, window: 'perc', mix: 0.95, master: 0.66,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 200, q: 0.8 },
+        tape: { on: true, drive: 1.5, tone: 0.6, wow: 0.3 },
+        delay: { on: true, time: 0.21, feedback: 0.35, mix: 0.3 },
+        reverb: { on: true, size: 0.6, decay: 0.5, mix: 0.42 }
+      }
+    })
+  },
+  {
+    id: 'tidal-glass',
+    name: 'TIDAL GLASS',
+    desc: 'стеклянный прилив',
+    params: P({
+      grainSize: 240, density: 16, spray: 0.35, pitch: 7, rate: 0.8,
+      jitter: 0.3, width: 0.85, window: 'tukey', mix: 0.92, master: 0.75,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 180, q: 0.5 },
+        tape: { on: true, drive: 1.1, tone: 0.8, wow: 0.28 },
+        delay: { on: true, time: 0.64, feedback: 0.62, mix: 0.38 },
+        reverb: { on: true, size: 0.95, decay: 0.92, mix: 0.6 }
+      }
+    })
+  },
+  {
+    id: 'broken-carousel',
+    name: 'BROKEN CAROUSEL',
+    desc: 'сломанные карусель',
+    params: P({
+      grainSize: 130, density: 24, spray: 0.5, pitch: -5, rate: 1.15,
+      jitter: 0.65, width: 0.9, window: 'rev', reverse: true, mix: 0.9, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 3800, q: 1.9 },
+        tape: { on: true, drive: 2, tone: 0.5, wow: 0.75 },
+        delay: { on: true, time: 0.43, feedback: 0.58, mix: 0.36 },
+        reverb: { on: true, size: 0.7, decay: 0.62, mix: 0.46 }
+      }
+    })
+  },
+  {
+    id: 'vhs-sunset',
+    name: 'VHS SUNSET',
+    desc: 'закат на кассете',
+    params: P({
+      grainSize: 380, density: 14, spray: 0.2, pitch: -2, rate: 0.75,
+      jitter: 0.35, width: 0.6, window: 'hann', mix: 0.9, master: 0.78,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 1800, q: 0.9 },
+        tape: { on: true, drive: 1.9, tone: 0.3, wow: 0.55 },
+        delay: { on: true, time: 0.5, feedback: 0.42, mix: 0.25 },
+        reverb: { on: true, size: 0.72, decay: 0.65, mix: 0.48 }
+      }
+    })
+  },
+  {
+    id: 'nerve-spark',
+    name: 'NERVE SPARK',
+    desc: 'искры нерва',
+    params: P({
+      grainSize: 22, density: 85, spray: 0.55, pitch: 12, rate: 1.6,
+      jitter: 0.95, width: 1, window: 'rev', mix: 0.95, master: 0.62,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 400, q: 1.5 },
+        tape: { on: true, drive: 1.7, tone: 0.9, wow: 0.4 },
+        delay: { on: true, time: 0.14, feedback: 0.5, mix: 0.38 },
+        reverb: { on: true, size: 0.45, decay: 0.4, mix: 0.35 }
+      }
+    })
+  },
+  {
+    id: 'hollow-planet',
+    name: 'HOLLOW PLANET',
+    desc: 'полая планета',
+    params: P({
+      grainSize: 820, density: 5, spray: 0.1, pitch: -12, rate: 0.45,
+      jitter: 0.1, width: 0.75, window: 'hann', freeze: true, mix: 0.97, master: 0.82,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 700, q: 2.2 },
+        tape: { on: true, drive: 1.8, tone: 0.2, wow: 0.18 },
+        delay: { on: true, time: 1.1, feedback: 0.6, mix: 0.3 },
+        reverb: { on: true, size: 0.92, decay: 0.88, mix: 0.55 }
+      }
+    })
+  },
+  {
+    id: 'cloud-atlas',
+    name: 'CLOUD ATLAS',
+    desc: 'атлас облаков',
+    params: P({
+      grainSize: 200, density: 18, spray: 0.95, pitch: 3, rate: 1,
+      jitter: 0.45, width: 1, window: 'tukey', mix: 0.92, master: 0.74,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 6800, q: 0.5 },
+        tape: { on: true, drive: 1.1, tone: 0.72, wow: 0.2 },
+        delay: { on: true, time: 0.56, feedback: 0.48, mix: 0.32 },
+        reverb: { on: true, size: 0.82, decay: 0.72, mix: 0.54 }
+      }
+    })
+  },
+  {
+    id: 'signal-1987',
+    name: 'SIGNAL FROM 1987',
+    desc: 'сигнал из 1987-го',
+    params: P({
+      grainSize: 150, density: 20, spray: 0.3, pitch: -5, rate: 0.92,
+      jitter: 0.55, width: 0.5, window: 'perc', mix: 0.88, master: 0.74,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 2400, q: 1.6 },
+        tape: { on: true, drive: 2.8, tone: 0.32, wow: 0.85 },
+        delay: { on: true, time: 0.31, feedback: 0.52, mix: 0.34 },
+        reverb: { on: true, size: 0.55, decay: 0.52, mix: 0.38 }
+      }
+    })
+  },
+  {
+    id: 'melting-clock',
+    name: 'MELTING CLOCK',
+    desc: 'тающие часы',
+    params: P({
+      grainSize: 950, density: 8, spray: 0.25, pitch: -12, rate: 0.35,
+      jitter: 0.2, width: 0.7, window: 'rev', mix: 0.95, master: 0.8,
+      fx: {
+        filter: { on: true, type: 'lowpass', cutoff: 1100, q: 1.3 },
+        tape: { on: true, drive: 1.35, tone: 0.35, wow: 0.6 },
+        delay: { on: true, time: 0.9, feedback: 0.55, mix: 0.28 },
+        reverb: { on: true, size: 0.85, decay: 0.8, mix: 0.52 }
+      }
+    })
+  },
+  {
+    id: 'star-chamber',
+    name: 'STAR CHAMBER',
+    desc: 'звёздная палата',
+    params: P({
+      grainSize: 75, density: 44, spray: 0.5, pitch: 7, rate: 1.05,
+      jitter: 0.5, width: 1, window: 'hann', mix: 0.93, master: 0.72,
+      fx: {
+        filter: { on: true, type: 'highpass', cutoff: 150, q: 0.6 },
+        tape: { on: true, drive: 1.15, tone: 0.82, wow: 0.18 },
+        delay: { on: true, time: 0.49, feedback: 0.56, mix: 0.35 },
+        reverb: { on: true, size: 0.9, decay: 0.85, mix: 0.58 }
+      }
+    })
   }
 ];
 
@@ -265,8 +570,14 @@ function softRandomize(rand, baseParams) {
   p.jitter = Math.round(varyAdd(p.jitter, 0.08, 0, 0.8) * 100) / 100;
   p.mix = Math.round(varyAdd(p.mix, 0.05, 0.6, 1) * 100) / 100;
   p.master = Math.round(varyAdd(p.master, 0.05, 0.55, 0.9) * 100) / 100;
+  p.width = Math.round(varyAdd(p.width, 0.1, 0.1, 1) * 100) / 100;
+  // window shape preserved — soft keeps the character
 
   p.fx.filter.cutoff = Math.round(vary(p.fx.filter.cutoff, 0.25, 200, 18000));
+  // audibility guard: never sweep a highpass into the inaudible zone
+  if (p.fx.filter.type === 'highpass') {
+    p.fx.filter.cutoff = Math.round(clamp(p.fx.filter.cutoff, 60, 1200));
+  }
   p.fx.filter.q = Math.round(varyAdd(p.fx.filter.q, 0.3, 0.1, 8) * 10) / 10;
   p.fx.tape.drive = Math.round(varyAdd(p.fx.tape.drive, 0.15, 0.7, 2.4) * 100) / 100;
   p.fx.tape.tone = Math.round(varyAdd(p.fx.tape.tone, 0.07, 0.15, 0.95) * 100) / 100;
@@ -286,22 +597,29 @@ function hardRandomize(rand) {
   const p = defaultParams();
   const pick = (a, b) => a + rand() * (b - a);
 
-  p.grainSize = Math.round(pick(40, 620));
-  p.density = Math.round(pick(5, 46) * 10) / 10;
+  p.grainSize = Math.round(pick(60, 620));
+  p.density = Math.round(pick(8, 46) * 10) / 10;
   p.spray = Math.round(pick(0.04, 0.7) * 100) / 100;
   // pitch biased to musical intervals
   const intervals = [-12, -7, -5, -3, 0, 0, 2, 3, 5, 7, 12];
   p.pitch = intervals[Math.floor(rand() * intervals.length)];
   p.rate = Math.round(pick(0.55, 1.6) * 100) / 100;
   p.jitter = Math.round(pick(0.05, 0.8) * 100) / 100;
-  p.mix = Math.round(pick(0.7, 1) * 100) / 100;
+  p.mix = Math.round(pick(0.75, 1) * 100) / 100;
   p.reverse = rand() < 0.18;
   p.freeze = rand() < 0.15;
-  p.master = Math.round(pick(0.62, 0.82) * 100) / 100;
+  p.master = Math.round(pick(0.65, 0.82) * 100) / 100;
+  p.width = Math.round(pick(0.25, 1) * 100) / 100;
+  const windows = ['hann', 'hann', 'tukey', 'perc', 'rev'];
+  p.window = windows[Math.floor(rand() * windows.length)];
 
   p.fx.filter.on = rand() < 0.85;
   p.fx.filter.type = rand() < 0.7 ? 'lowpass' : 'highpass';
-  p.fx.filter.cutoff = Math.round(pick(600, 12000));
+  // AUDIBILITY GUARD: a highpass above ~1.2 kHz silences the texture —
+  // this was the "sound disappears on randomize" bug. Keep both curves musical.
+  p.fx.filter.cutoff = p.fx.filter.type === 'highpass'
+    ? Math.round(pick(80, 800))
+    : Math.round(pick(800, 14000));
   p.fx.filter.q = Math.round(pick(0.4, 2.2) * 10) / 10;
 
   p.fx.tape.on = rand() < 0.8;
@@ -342,6 +660,9 @@ export function sanitizeParams(raw) {
   p.rate = clamp(p.rate, 0.1, 4, 1);
   p.jitter = clamp(p.jitter, 0, 1, 0.2);
   p.mix = clamp(p.mix, 0, 1, 0.8);
+  p.slotMix = clamp(p.slotMix, 0, 1, 0);
+  p.width = clamp(p.width, 0, 1, 0.7);
+  p.window = ['hann', 'tukey', 'perc', 'rev'].includes(p.window) ? p.window : 'hann';
   p.master = clamp(p.master, 0, 1.2, 0.8);
   p.reverse = !!p.reverse;
   p.freeze = !!p.freeze;

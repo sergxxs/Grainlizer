@@ -36,15 +36,19 @@ function assertCompleteParams(p) {
   assert.ok(p.fx.reverb.mix >= 0 && p.fx.reverb.mix <= 1);
 }
 
-test('all 12 built-in presets exist with full safe parameter sets', () => {
+test('all 32 built-in presets exist with full safe parameter sets', () => {
   const names = BUILTIN_PRESETS.map((p) => p.name);
   for (const expected of [
     'SOFT MEMORY', 'BROKEN TAPE', 'GLASS CLOUD', 'LOST SIGNAL', 'DEEP SLEEP', 'DREAM FRAGMENT',
-    'NEON DUST', 'MAGNETIC GHOST', 'ICE CAVE', 'SLOW EROSION', 'STATIC BLOOM', 'SATELLITE DRIFT'
+    'NEON DUST', 'MAGNETIC GHOST', 'ICE CAVE', 'SLOW EROSION', 'STATIC BLOOM', 'SATELLITE DRIFT',
+    'RUST GARDEN', 'VELVET STATIC', 'CATHEDRAL DUST', 'TAPE WORM', 'UNDERWATER ORGAN',
+    'CHROME INSECTS', 'SLEEPWALKER', 'BURNED LETTER', 'AURORA DRIFT', 'PHANTOM CHOIR',
+    'GRAVEL RAIN', 'TIDAL GLASS', 'BROKEN CAROUSEL', 'VHS SUNSET', 'NERVE SPARK',
+    'HOLLOW PLANET', 'CLOUD ATLAS', 'SIGNAL FROM 1987', 'MELTING CLOCK', 'STAR CHAMBER'
   ]) {
     assert.ok(names.includes(expected), `missing preset ${expected}`);
   }
-  assert.equal(BUILTIN_PRESETS.length, 12);
+  assert.equal(BUILTIN_PRESETS.length, 32);
   for (const preset of BUILTIN_PRESETS) {
     assertCompleteParams(preset.params);
   }
@@ -108,6 +112,17 @@ test('randomizeParams produces musical, safe values (seeded)', () => {
     assertCompleteParams(p);
     assert.ok(p.fx.delay.feedback <= 0.85);
     assert.ok(p.master <= 0.85, 'randomize must not push master dangerously high');
+    // AUDIBILITY GUARD: randomize must never produce a near-silent patch
+    assert.ok(p.density >= 8, `density ${p.density} too sparse`);
+    assert.ok(p.grainSize >= 60, `grainSize ${p.grainSize} too short`);
+    assert.ok(p.mix >= 0.75, `mix ${p.mix} too dry`);
+    if (p.fx.filter.type === 'highpass' && p.fx.filter.on) {
+      assert.ok(p.fx.filter.cutoff <= 800, `highpass ${p.fx.filter.cutoff} Hz would kill the sound`);
+    }
+    if (p.fx.filter.type === 'lowpass' && p.fx.filter.on) {
+      assert.ok(p.fx.filter.cutoff >= 800, `lowpass ${p.fx.filter.cutoff} Hz would kill the sound`);
+    }
+    assert.ok(['hann', 'tukey', 'perc', 'rev'].includes(p.window));
   }
 });
 
@@ -130,6 +145,10 @@ test('SOFT randomize keeps the character of the base patch', () => {
     assert.equal(p.fx.tape.on, base.fx.tape.on);
     assert.equal(p.fx.delay.on, base.fx.delay.on);
     assert.equal(p.fx.reverb.on, base.fx.reverb.on);
+    assert.equal(p.window, base.window, 'soft randomize must keep the grain window');
+    if (p.fx.filter.type === 'highpass' && p.fx.filter.on) {
+      assert.ok(p.fx.filter.cutoff <= 1200, 'soft randomize must not sweep highpass into silence');
+    }
     // pitch drifts at most ±2 semitones from base
     assert.ok(Math.abs(p.pitch - base.pitch) <= 2, `pitch drift too big: ${p.pitch} vs ${base.pitch}`);
     // grain size stays within a narrow relative band (±30%)

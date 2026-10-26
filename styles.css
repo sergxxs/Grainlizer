@@ -422,6 +422,28 @@ body {
 
 .knob-sm .knob-pointer::after { height: 13px; top: 4px; }
 
+.knob-pink .knob-pointer::after {
+  background: var(--pink);
+  box-shadow: 0 0 6px rgba(255, 64, 156, 0.6);
+}
+
+.knob-pink .knob-dial::before {
+  background: conic-gradient(
+    from 225deg,
+    var(--pink) 0deg,
+    var(--pink) calc(var(--val) * 2.7deg),
+    rgba(255, 64, 156, 0.12) calc(var(--val) * 2.7deg),
+    rgba(255, 64, 156, 0.12) 270deg,
+    transparent 270deg
+  );
+}
+
+.win-head { margin: 2px 0 10px; }
+
+.panel-actions-wrap {
+  margin-bottom: 8px;
+}
+
 .knob-value {
   font-size: 9.5px;
   letter-spacing: 0.5px;
