@@ -38,6 +38,7 @@ export class AudioEngine {
     };
     this.onStatus = null;        // (status) => {}
     this.onSampleLoaded = null;  // (meta) => {}
+    this.onStateChange = null;   // (state) => {}
     this._recorderChunks = [];
     this._recorderDone = null;
   }
@@ -99,17 +100,55 @@ export class AudioEngine {
 
     this.pushParams();
     this.ready = true;
+
+    // live status updates (iOS flips between running/suspended/interrupted)
+    if (typeof this.ctx.addEventListener === 'function') {
+      this.ctx.addEventListener('statechange', () => {
+        if (this.onStateChange) this.onStateChange(this.ctx.state);
+      });
+    }
   }
 
+  /**
+   * Bulletproof resume for iOS Safari.
+   * AudioContext can be 'suspended' OR 'interrupted' (Safari-specific) — both
+   * must be resumed inside a user gesture, with a silent-buffer kick. The
+   * resume() promise is raced against a timeout so callers never hang.
+   */
   async resume() {
-    if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') {
-      try { await this.ctx.resume(); } catch (_) { /* handled by caller */ }
+    if (!this.ctx) return 'closed';
+    if (this.ctx.state === 'closed') return 'closed';
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.ctx.state === 'running') return 'running';
+
+      try {
+        // silent-buffer kick: reliable unlock for iOS audio sessions
+        const kick = this.ctx.createBufferSource();
+        kick.buffer = this.ctx.createBuffer(1, 1, Math.min(22050, this.ctx.sampleRate));
+        kick.connect(this.ctx.destination);
+        kick.start(0);
+      } catch (_) { /* kick is best-effort */ }
+
+      try {
+        await Promise.race([
+          this.ctx.resume(),
+          new Promise((resolve) => setTimeout(resolve, 700))
+        ]);
+      } catch (_) { /* retry */ }
+
+      if (this.ctx.state === 'running') return 'running';
+      await new Promise((resolve) => setTimeout(resolve, 120));
     }
+    return this.ctx.state;
   }
 
   get state() {
     return this.ctx ? this.ctx.state : 'closed';
+  }
+
+  get running() {
+    return !!this.ctx && this.ctx.state === 'running';
   }
 
   /* ---------------- sample handling ---------------- */
@@ -117,12 +156,26 @@ export class AudioEngine {
   async loadFile(file) {
     if (!file) return null;
     await this.init();
-    const arrayBuffer = await file.arrayBuffer();
+    // FileReader fallback for older iOS Safari without Blob.arrayBuffer()
+    let arrayBuffer;
+    if (typeof file.arrayBuffer === 'function') {
+      arrayBuffer = await file.arrayBuffer();
+    } else {
+      arrayBuffer = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(fr.error || new Error('File read failed'));
+        fr.readAsArrayBuffer(file);
+      });
+    }
     let audioBuffer;
     try {
-      audioBuffer = await this.ctx.decodeAudioData(arrayBuffer.slice(0));
+      audioBuffer = await this.decode(arrayBuffer);
     } catch (err) {
       throw new Error(`Cannot decode "${file.name}". Supported: formats the browser can decode (WAV, MP3, AAC/M4A, OGG…).`);
+    }
+    if (!audioBuffer || audioBuffer.length < 1) {
+      throw new Error(`"${file.name}" decoded to an empty buffer.`);
     }
     this.setBuffer(audioBuffer, {
       name: file.name,
@@ -133,18 +186,33 @@ export class AudioEngine {
     return this.meta;
   }
 
+  /** decodeAudioData with promise + callback (older Safari) support. */
+  decode(arrayBuffer) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const ok = (buf) => { if (!settled) { settled = true; resolve(buf); } };
+      const fail = (err) => { if (!settled) { settled = true; reject(err || new Error('decode failed')); } };
+      try {
+        const p = this.ctx.decodeAudioData(arrayBuffer.slice(0), ok, fail);
+        if (p && typeof p.then === 'function') p.then(ok, fail);
+      } catch (err) {
+        fail(err);
+      }
+    });
+  }
+
   /** Programmatic original demo sample (additive pad + noise texture). */
   async createDemoSample() {
     await this.init();
     const sr = this.ctx.sampleRate;
-    const seconds = 7.5;
+    const seconds = 6;
     const len = Math.floor(sr * seconds);
     const buf = this.ctx.createBuffer(2, len, sr);
     // Original generated content: slow glassy drone with beating partials.
     const partials = [
-      { f: 110, a: 0.30 }, { f: 164.81, a: 0.22 }, { f: 220, a: 0.18 },
-      { f: 277.18, a: 0.12 }, { f: 329.63, a: 0.10 }, { f: 440, a: 0.08 },
-      { f: 554.37, a: 0.06 }, { f: 659.25, a: 0.05 }, { f: 880, a: 0.035 }
+      { f: 110, a: 0.32 }, { f: 164.81, a: 0.24 }, { f: 220, a: 0.18 },
+      { f: 277.18, a: 0.12 }, { f: 329.63, a: 0.10 }, { f: 440, a: 0.07 },
+      { f: 659.25, a: 0.05 }
     ];
     for (let ch = 0; ch < 2; ch++) {
       const data = buf.getChannelData(ch);
@@ -269,7 +337,10 @@ export class AudioEngine {
 
   async play() {
     if (!this.buffer) throw new Error('Load a sample first');
-    await this.resume();
+    const state = await this.resume();
+    if (state !== 'running') {
+      throw new Error('Аудио заблокировано браузером — нажмите на экран и повторите');
+    }
     this.granularNode.port.postMessage({ type: 'play' });
     this.playing = true;
   }

@@ -34,10 +34,17 @@ export class Recorder {
     return (seconds * sr * 2 * 4 * 1.6) / (1024 * 1024);
   }
 
-  start() {
+  async start() {
     if (this.recording) return;
     if (!this.engine.ready || !this.engine.buffer) {
-      this.error = 'Load a sample first';
+      this.error = 'Нет семпла — загрузите файл или DEMO';
+      this._setState('error');
+      throw new Error(this.error);
+    }
+    // the audio graph must actually run, otherwise nothing is captured
+    const state = await this.engine.resume();
+    if (state !== 'running') {
+      this.error = 'Аудио заблокировано браузером — нажмите на экран и повторите';
       this._setState('error');
       throw new Error(this.error);
     }
@@ -94,7 +101,9 @@ export class Recorder {
       const durationSec = frames / sr;
       if (frames === 0) {
         this.result = null;
-        this.error = 'Recording is empty — no audio was captured.';
+        this.error = this.engine.running
+          ? 'Запись пустая — сигнал не был захвачен.'
+          : 'Запись пустая: аудиодвижок был остановлен (экран заблокирован?). Нажмите на экран и повторите.';
         this._setState('error');
         return;
       }

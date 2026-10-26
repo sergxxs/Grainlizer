@@ -57,42 +57,37 @@ export class ExportEngine {
       try {
         blob = await new Promise((resolve, reject) => {
           let settled = false;
+          const finish = (fn, arg) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            worker.removeEventListener('message', onMsg);
+            worker.removeEventListener('error', onErr);
+            fn(arg);
+          };
           const onMsg = (e) => {
             const m = e.data;
             if (!m) return;
-            if (m.type === 'encoded' && !settled) {
-              settled = true;
-              clearTimeout(timer);
-              worker.removeEventListener('message', onMsg);
-              resolve(m.blob);
-            } else if (m.type === 'error' && !settled) {
-              settled = true;
-              clearTimeout(timer);
-              worker.removeEventListener('message', onMsg);
-              reject(new Error(m.message));
-            }
+            if (m.type === 'encoded') finish(resolve, m.blob);
+            else if (m.type === 'error') finish(reject, new Error(m.message));
+          };
+          const onErr = (e) => {
+            // module worker failed to boot (old Safari) → immediate fallback
+            finish(reject, new Error(e && e.message ? e.message : 'worker error'));
           };
           worker.addEventListener('message', onMsg);
-          // if the module worker fails to boot (old browsers), fall back instead of hanging
-          const timer = setTimeout(() => {
-            if (!settled) {
-              settled = true;
-              worker.removeEventListener('message', onMsg);
-              reject(new Error('worker-timeout'));
-            }
-          }, 4000);
+          worker.addEventListener('error', onErr);
+          const timer = setTimeout(() => finish(reject, new Error('worker-timeout')), 4000);
           // structured clone (no transfer): the main thread keeps its copy so the
           // result can be re-exported later in 16-bit or 32-bit float
           worker.postMessage(payload);
         });
       } catch (err) {
-        if (String(err && err.message).includes('worker-timeout') || err) {
-          if (this.onState) this.onState('fallback');
-          const buffer = await this._encodeYielding(payload);
-          blob = new Blob([buffer], { type: 'audio/wav' });
-          this._workerFailed = true;
-          if (this.worker) { this.worker.terminate(); this.worker = null; }
-        }
+        if (this.onState) this.onState('fallback');
+        const buffer = await this._encodeYielding(payload);
+        blob = new Blob([buffer], { type: 'audio/wav' });
+        this._workerFailed = true;
+        if (this.worker) { this.worker.terminate(); this.worker = null; }
       }
     } else {
       // main-thread fallback

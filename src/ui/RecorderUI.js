@@ -41,7 +41,7 @@ export class RecorderUI {
     this.renderTimer(0, 0);
   }
 
-  handleRec() {
+  async handleRec() {
     if (this.recorder.recording || this.recorder.state === 'finalizing') return;
     if (this.recorder.result) {
       // new take: drop previous result + cached blob
@@ -49,7 +49,7 @@ export class RecorderUI {
       this.exporter.release();
     }
     try {
-      this.recorder.start();
+      await this.recorder.start();
       this.setStatus('Запись мастер-сигнала…', 'rec');
       if (this.onRecStart) this.onRecStart();
     } catch (err) {

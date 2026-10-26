@@ -145,6 +145,31 @@ body {
 
 .icon-btn:active { background: var(--teal-soft); }
 
+/* ============ AUDIO BLOCK BANNER ============ */
+.audio-banner {
+  position: sticky;
+  top: calc(52px + var(--safe-top));
+  z-index: 19;
+  margin: 0 12px;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #14030c;
+  background: linear-gradient(90deg, var(--warn), #ffd28f);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 18px rgba(255, 180, 84, 0.35);
+  animation: bannerPulse 1.6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.audio-banner[hidden] { display: none; }
+
+@keyframes bannerPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+
 /* ============ SCROLL / PANELS ============ */
 .main-scroll {
   flex: 1;

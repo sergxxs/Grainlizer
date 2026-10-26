@@ -143,35 +143,48 @@ async function boot() {
     $('formatSelect').value = String(settings.recorder.bitDepth);
   }
 
-  // sample: restore saved one, otherwise generate the demo sample
-  const saved = await Storage.loadSample().catch(() => null);
-  if (saved && saved.channels && saved.channels[0] && saved.channels[0].length) {
-    try {
-      const buf = engine.ctx.createBuffer(
-        saved.channels.length,
-        saved.channels[0].length,
-        saved.meta.sampleRate || engine.ctx.sampleRate
-      );
-      for (let i = 0; i < saved.channels.length; i++) buf.copyToChannel(saved.channels[i], i);
-      engine.setBuffer(buf, saved.meta);
-    } catch (_) {
+  // sample: restore saved one, otherwise generate the demo sample.
+  // Never let this kill the boot — unlock handlers must always be registered.
+  try {
+    const saved = await Storage.loadSample().catch(() => null);
+    if (saved && saved.channels && saved.channels[0] && saved.channels[0].length) {
+      try {
+        const buf = engine.ctx.createBuffer(
+          saved.channels.length,
+          saved.channels[0].length,
+          saved.meta.sampleRate || engine.ctx.sampleRate
+        );
+        for (let i = 0; i < saved.channels.length; i++) buf.copyToChannel(saved.channels[i], i);
+        engine.setBuffer(buf, saved.meta);
+      } catch (_) {
+        await engine.createDemoSample();
+      }
+    } else {
       await engine.createDemoSample();
     }
-  } else {
-    await engine.createDemoSample();
+  } catch (err) {
+    console.warn('sample setup failed', err);
+    $('recStatus').textContent = `Семпл не загрузился: ${err.message || err} — нажмите DEMO`;
+    $('recStatus').dataset.kind = 'error';
   }
 
-  // first gesture resumes the AudioContext (iOS autoplay policy)
+  // first gesture resumes the AudioContext (iOS autoplay policy).
+  // Retry on every interaction: iOS Safari can flip to 'interrupted' at any time.
   const unlock = async () => {
-    await engine.resume();
-    setEngineStatus(engine.state);
+    const state = await engine.resume();
+    setEngineStatus(state);
   };
-  window.addEventListener('pointerdown', unlock);
-  window.addEventListener('touchend', unlock, { passive: true });
+  for (const evt of ['pointerdown', 'touchend', 'click', 'keydown']) {
+    window.addEventListener(evt, unlock, { passive: true });
+  }
+  engine.onStateChange = (state) => setEngineStatus(state);
 
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) setEngineStatus(engine.state);
-    if (document.hidden && recorder.recording && recorderUI) {
+  document.addEventListener('visibilitychange', async () => {
+    if (!document.hidden) {
+      // returning from background often leaves iOS in 'interrupted'
+      const state = await engine.resume();
+      setEngineStatus(state);
+    } else if (recorder.recording && recorderUI) {
       recorderUI.setStatus('Внимание: iOS может приостановить аудио при блокировке экрана', 'warn');
     }
   });
@@ -219,18 +232,26 @@ async function boot() {
 function setEngineStatus(state) {
   const led = $('engineLed');
   const text = $('engineStatusText');
-  if (state === 'running') {
+  const banner = $('audioBanner');
+  const running = state === 'running';
+  if (running) {
     led.classList.add('is-on');
     text.textContent = 'AUDIO: RUNNING';
     text.style.color = 'var(--teal)';
-  } else if (state === 'suspended') {
+  } else if (state === 'suspended' || state === 'interrupted') {
     led.classList.remove('is-on');
-    text.textContent = 'AUDIO: TAP TO START';
+    text.textContent = state === 'interrupted' ? 'AUDIO: INTERRUPTED' : 'AUDIO: TAP TO START';
     text.style.color = 'var(--warn)';
   } else {
     led.classList.remove('is-on');
     text.textContent = `AUDIO: ${String(state).toUpperCase()}`;
     text.style.color = 'var(--err)';
+  }
+  if (banner) {
+    banner.hidden = running || !engine.ready;
+    banner.textContent = state === 'interrupted'
+      ? '⚠ AUDIO INTERRUPTED — КОСНИТЕСЬ ЭКРАНА'
+      : '♪ КОСНИТЕСЬ ЭКРАНА ДЛЯ ЗАПУСКА ЗВУКА';
   }
   const ctxInfo = $('ctxInfo');
   if (ctxInfo && engine.ctx) {
@@ -416,8 +437,8 @@ function updateSelectionChip() {
 
 async function ensureAudio() {
   if (!engine.ready) await engine.init();
-  await engine.resume();
-  setEngineStatus(engine.state);
+  const state = await engine.resume();
+  setEngineStatus(state);
 }
 
 function updateMemEstimate(seconds) {
@@ -613,4 +634,11 @@ function registerPWA() {
   }
 }
 
-boot();
+boot().catch((err) => {
+  console.error('boot failed', err);
+  const el = document.getElementById('recStatus');
+  if (el) {
+    el.textContent = `Ошибка запуска: ${err && err.message ? err.message : err}`;
+    el.dataset.kind = 'error';
+  }
+});
