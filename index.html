@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#070b0d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GRAINLIZER">
+  <meta name="description" content="GRAINLIZER — granular ambient instrument. Local Web Audio granular synthesis, effects and WAV export.">
+  <title>GRAINLIZER — Granular Ambient Instrument</title>
+  <link rel="manifest" href="public/manifest.webmanifest">
+  <link rel="icon" href="public/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="public/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ============ TOP PANEL ============ -->
+    <header class="top-panel">
+      <div class="brand">
+        <h1 class="brand-name">GRAINLIZER</h1>
+        <p class="brand-sub">GRANULAR AMBIENT INSTRUMENT</p>
+      </div>
+      <div class="top-status">
+        <div class="engine-status" id="engineStatus" title="Audio engine">
+          <span class="led" id="engineLed"></span>
+          <span class="engine-status-text" id="engineStatusText">AUDIO: —</span>
+        </div>
+        <button class="icon-btn" id="btnHelp" type="button" aria-label="Справка">?</button>
+        <button class="icon-btn" id="btnSettings" type="button" aria-label="Настройки">⚙</button>
+      </div>
+    </header>
+
+    <main class="main-scroll" id="mainScroll">
+
+      <!-- ============ SAMPLE ============ -->
+      <section class="panel" id="samplePanel">
+        <div class="panel-head">
+          <h2 class="panel-title">SAMPLE</h2>
+          <div class="panel-actions">
+            <button class="btn" id="btnImport" type="button">IMPORT</button>
+            <button class="btn" id="btnDemo" type="button">DEMO</button>
+            <button class="btn btn-ghost" id="btnClearSample" type="button">CLEAR</button>
+            <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac" hidden>
+          </div>
+        </div>
+        <div class="sample-info" id="sampleInfo">
+          <span class="chip chip-dim" id="chipName">нет семпла</span>
+          <span class="chip" id="chipDur">—</span>
+          <span class="chip" id="chipSr">—</span>
+          <span class="chip" id="chipCh">—</span>
+          <span class="chip chip-pink" id="chipSel">SEL —</span>
+        </div>
+        <div class="wave-wrap" id="waveWrap">
+          <canvas id="waveform" aria-label="Осциллограмма семпла"></canvas>
+          <div class="wave-hint" id="waveHint">перетащите — позиция · края — диапазон</div>
+        </div>
+        <div class="row row-tight">
+          <button class="btn btn-ghost btn-small" id="btnSelAll" type="button">SEL: ALL</button>
+          <button class="btn btn-ghost btn-small" id="btnSelReset" type="button">SEL: RESET</button>
+          <span class="mini-label" id="headReadout">POS 0.000</span>
+        </div>
+      </section>
+
+      <!-- ============ GRANULAR ENGINE ============ -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">GRANULAR ENGINE</h2>
+          <div class="panel-actions">
+            <button class="toggle" id="tgReverse" aria-pressed="false" type="button">REV</button>
+            <button class="toggle" id="tgFreeze" aria-pressed="false" type="button">FREEZE</button>
+          </div>
+        </div>
+        <div class="knob-grid">
+          <div class="knob" data-param="position" data-min="0" data-max="1" data-default="0.35" data-fmt="fix2">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">0.35</div><div class="knob-label">POSITION</div>
+          </div>
+          <div class="knob" data-param="grainSize" data-min="8" data-max="1500" data-default="180" data-step="1" data-unit="ms" data-scale="log" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">180 ms</div><div class="knob-label">GRAIN SIZE</div>
+          </div>
+          <div class="knob" data-param="density" data-min="0.5" data-max="80" data-default="16" data-step="0.5" data-unit="Hz" data-scale="log" data-fmt="fix1">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">16.0 Hz</div><div class="knob-label">DENSITY</div>
+          </div>
+          <div class="knob" data-param="spray" data-min="0" data-max="100" data-default="12" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">12 %</div><div class="knob-label">SPRAY</div>
+          </div>
+          <div class="knob" data-param="pitch" data-min="-24" data-max="24" data-default="0" data-step="1" data-unit="st" data-fmt="sign1">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">+0 st</div><div class="knob-label">PITCH</div>
+          </div>
+          <div class="knob" data-param="rate" data-min="0.1" data-max="4" data-default="1" data-step="0.01" data-unit="x" data-fmt="fix2">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">1.00 x</div><div class="knob-label">RATE</div>
+          </div>
+          <div class="knob" data-param="jitter" data-min="0" data-max="100" data-default="20" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">20 %</div><div class="knob-label">JITTER</div>
+          </div>
+          <div class="knob" data-param="mix" data-min="0" data-max="100" data-default="80" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">80 %</div><div class="knob-label">MIX</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ EFFECTS ============ -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">EFFECTS</h2>
+          <div class="panel-actions">
+            <button class="toggle toggle-pink" id="tgFxBypass" aria-pressed="false" type="button">BYPASS</button>
+          </div>
+        </div>
+
+        <div class="fx-block">
+          <div class="fx-head">
+            <h3 class="fx-title">FILTER</h3>
+            <div class="seg" role="group" aria-label="Filter type">
+              <button class="seg-btn is-on" id="segLP" type="button">LP</button>
+              <button class="seg-btn" id="segHP" type="button">HP</button>
+            </div>
+            <button class="toggle toggle-small" id="tgFilter" aria-pressed="true" type="button">ON</button>
+          </div>
+          <div class="knob-row">
+            <div class="knob knob-sm" data-param="filter.cutoff" data-min="20" data-max="20000" data-default="8000" data-scale="log" data-fmt="int" data-unit="Hz">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">8000 Hz</div><div class="knob-label">CUTOFF</div>
+            </div>
+            <div class="knob knob-sm" data-param="filter.q" data-min="0.1" data-max="20" data-default="0.7" data-step="0.1" data-fmt="fix1">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">0.7</div><div class="knob-label">RESO</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fx-block">
+          <div class="fx-head">
+            <h3 class="fx-title">TAPE</h3>
+            <button class="toggle toggle-small" id="tgTape" aria-pressed="true" type="button">ON</button>
+          </div>
+          <div class="knob-row">
+            <div class="knob knob-sm" data-param="tape.drive" data-min="0.5" data-max="3" data-default="1.2" data-step="0.01" data-fmt="fix2">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">1.20</div><div class="knob-label">DRIVE</div>
+            </div>
+            <div class="knob knob-sm" data-param="tape.tone" data-min="0" data-max="100" data-default="60" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">60 %</div><div class="knob-label">TONE</div>
+            </div>
+            <div class="knob knob-sm" data-param="tape.wow" data-min="0" data-max="100" data-default="15" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">15 %</div><div class="knob-label">WOW</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fx-block">
+          <div class="fx-head">
+            <h3 class="fx-title">DELAY</h3>
+            <button class="toggle toggle-small" id="tgDelay" aria-pressed="true" type="button">ON</button>
+          </div>
+          <div class="knob-row">
+            <div class="knob knob-sm" data-param="delay.time" data-min="0.02" data-max="1.8" data-default="0.42" data-step="0.01" data-unit="s" data-fmt="fix2">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">0.42 s</div><div class="knob-label">TIME</div>
+            </div>
+            <div class="knob knob-sm" data-param="delay.feedback" data-min="0" data-max="85" data-default="45" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">45 %</div><div class="knob-label">FEEDBACK</div>
+            </div>
+            <div class="knob knob-sm" data-param="delay.mix" data-min="0" data-max="100" data-default="25" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">25 %</div><div class="knob-label">MIX</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fx-block">
+          <div class="fx-head">
+            <h3 class="fx-title">REVERB</h3>
+            <button class="toggle toggle-small" id="tgReverb" aria-pressed="true" type="button">ON</button>
+          </div>
+          <div class="knob-row">
+            <div class="knob knob-sm" data-param="reverb.size" data-min="5" data-max="100" data-default="60" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">60 %</div><div class="knob-label">SIZE</div>
+            </div>
+            <div class="knob knob-sm" data-param="reverb.decay" data-min="5" data-max="100" data-default="55" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">55 %</div><div class="knob-label">DECAY</div>
+            </div>
+            <div class="knob knob-sm" data-param="reverb.mix" data-min="0" data-max="100" data-default="40" data-step="1" data-unit="%" data-fmt="int">
+              <div class="knob-dial"><div class="knob-pointer"></div></div>
+              <div class="knob-value">40 %</div><div class="knob-label">MIX</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MASTER ============ -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">MASTER</h2>
+          <div class="panel-actions">
+            <span class="mini-label" id="clipLedLabel">CLIP</span>
+            <span class="led led-pink" id="clipLed"></span>
+          </div>
+        </div>
+        <div class="master-row">
+          <div class="knob" data-param="master" data-min="0" data-max="120" data-default="80" data-step="1" data-unit="%" data-fmt="int">
+            <div class="knob-dial"><div class="knob-pointer"></div></div>
+            <div class="knob-value">80 %</div><div class="knob-label">VOLUME</div>
+          </div>
+          <div class="meters">
+            <div class="meter-line"><span class="meter-tag">L</span><canvas class="meter-canvas" id="meterL"></canvas></div>
+            <div class="meter-line"><span class="meter-tag">R</span><canvas class="meter-canvas" id="meterR"></canvas></div>
+            <div class="mini-label" id="voiceReadout">VOICES 0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TRANSPORT / RECORDER ============ -->
+      <section class="panel panel-transport">
+        <div class="panel-head">
+          <h2 class="panel-title">TRANSPORT</h2>
+          <div class="led-block">
+            <span class="led" id="recLed"></span>
+            <span class="mini-label">REC</span>
+          </div>
+        </div>
+        <div class="transport-row">
+          <button class="t-btn t-play" id="btnPlay" type="button">PLAY</button>
+          <button class="t-btn t-stop" id="btnStop" type="button">STOP</button>
+          <button class="t-btn t-rec" id="btnRec" type="button">REC</button>
+          <button class="t-btn t-export" id="btnExport" type="button">EXPORT WAV</button>
+        </div>
+        <div class="timer-row">
+          <div class="timer" id="timer">00:00.00</div>
+          <div class="tail-timer" id="tailTimer"></div>
+        </div>
+        <div class="row row-tight">
+          <label class="field">
+            <span class="field-label">TAIL</span>
+            <select id="tailSelect" class="select">
+              <option value="0">0 s</option>
+              <option value="2" selected>2 s</option>
+              <option value="5">5 s</option>
+              <option value="10">10 s</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">FORMAT</span>
+            <select id="formatSelect" class="select">
+              <option value="16" selected>16-bit PCM</option>
+              <option value="32">32-bit float</option>
+            </select>
+          </label>
+          <span class="mini-label" id="memEstimate"></span>
+        </div>
+        <div class="rec-status" id="recStatus" data-kind="idle">Готов к записи</div>
+      </section>
+
+      <!-- ============ PRESETS ============ -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">PRESETS</h2>
+          <div class="panel-actions">
+            <button class="btn btn-pink" id="btnRandomize" type="button">RANDOMIZE</button>
+            <button class="btn" id="btnSavePreset" type="button">SAVE</button>
+          </div>
+        </div>
+        <div class="preset-strip" id="presetStrip"></div>
+      </section>
+
+      <footer class="foot">
+        <span>GRAINLIZER v1.0 · LOCAL WEB AUDIO · NO SERVER</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ============ HELP MODAL ============ -->
+  <div class="modal" id="helpModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>СПРАВКА</h2>
+        <button class="icon-btn" data-close="helpModal" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3>Как пользоваться</h3>
+        <ol>
+          <li>Нажмите <b>IMPORT</b> и выберите аудиофайл (или <b>DEMO</b>).</li>
+          <li>Нажмите <b>PLAY</b> — начнётся гранулярный синтез.</li>
+          <li>Крутите регуляторы — звук меняется сразу.</li>
+          <li><b>REC</b> — запись мастер-сигнала (что слышно, то и пишется).</li>
+          <li><b>STOP</b> — остановка; записывается хвост эффектов (TAIL).</li>
+          <li><b>EXPORT WAV</b> — сохранение стерео WAV (16-bit PCM или 32-bit float).</li>
+        </ol>
+        <h3>Параметры</h3>
+        <ul>
+          <li><b>POSITION</b> — позиция чтения. Перетаскивание на осциллограмме делает то же самое.</li>
+          <li><b>GRAIN SIZE</b> — длительность гранулы (мс).</li>
+          <li><b>DENSITY</b> — гранул в секунду.</li>
+          <li><b>SPRAY</b> — разброс позиций старта гранул вдоль диапазона.</li>
+          <li><b>PITCH</b> — высота (семитоны), реализована ресемплингом внутри гранул.</li>
+          <li><b>RATE</b> — скорость движения чтения.</li>
+          <li><b>JITTER</b> — случайность позиций, скорости, панорамы.</li>
+          <li><b>REV</b> — гранулы читаются назад.</li>
+          <li><b>FREEZE</b> — позиция фиксируется: устойчивый слой.</li>
+          <li><b>MIX</b> — баланс «сухого» монитора и гранулярного слоя.</li>
+        </ul>
+        <h3>Ограничения iOS Safari</h3>
+        <ul>
+          <li>Звук стартует только после касания (политика автоплея).</li>
+          <li>При блокировке экрана / сворачивании аудио может ставиться на паузу — фоновая работа не гарантируется.</li>
+          <li>Длинные записи потребляют много памяти (лимит 20 минут, предупреждение с 5 минут).</li>
+          <li>PWA-установка: «Поделиться» → «На экран Домой».</li>
+          <li>Все вычисления локальные: микрофон не используется и не запрашивается.</li>
+        </ul>
+        <h3>О джиттере PITCH</h3>
+        <p>PITCH реализован через ресемплинг гранул (классический гранулярный сдвиг высоты):
+        длительность гранулы постоянна во времени, содержимое гранулы воспроизводится с изменённой скоростью.
+        Отдельного независимого time-stretch (phase vocoder) в этой версии нет.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS MODAL ============ -->
+  <div class="modal" id="settingsModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>НАСТРОЙКИ</h2>
+        <button class="icon-btn" data-close="settingsModal" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3>Проект</h3>
+        <div class="row row-tight">
+          <button class="btn" id="btnSaveProject" type="button">SAVE PROJECT</button>
+          <button class="btn" id="btnLoadProject" type="button">LOAD PROJECT</button>
+          <button class="btn btn-ghost" id="btnClearData" type="button">CLEAR ALL DATA</button>
+        </div>
+        <p class="note" id="settingsNote">
+          Проект сохраняет настройки синтеза/эффектов и метаданные семпла.
+          Сам семпл также сохраняется в IndexedDB (пока хватает квоты).
+        </p>
+        <h3>Аудио</h3>
+        <div class="kv"><span>AudioContext</span><span id="ctxInfo">—</span></div>
+        <div class="kv"><span>Sample rate</span><span id="ctxSr">—</span></div>
+        <div class="kv"><span>State</span><span id="ctxState">—</span></div>
+        <h3>Хранилище</h3>
+        <div class="kv"><span>Пользовательских пресетов</span><span id="userPresetCount">0</span></div>
+        <p class="note">Настройки: localStorage. Семплы/проекты: IndexedDB.
+        Повреждённые данные отбрасываются автоматически.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
